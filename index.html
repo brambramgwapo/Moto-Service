@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Classifier | Teachable Machine</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TensorFlow.js and Teachable Machine Image Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+</head>
+<script>
+    // Tailwind configuration for custom animations or colors if needed
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    brand: { 50: '#f0fdf4', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' }
+                }
+            }
+        }
+    }
+</script>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">AI Vision Classifier</h1>
+                <p class="text-sm text-slate-500">Powered by Teachable Machine & TensorFlow.js</p>
+            </div>
+            <div id="model-status" class="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-medium border border-amber-200">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                Loading Model...
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-5xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Left Column: Input Panel (Webcam & Upload) -->
+        <div class="space-y-6">
+            
+            <!-- Mode Switcher Tabs -->
+            <div class="flex rounded-lg bg-slate-200 p-1">
+                <button onclick="switchTab('webcam')" id="tab-webcam" class="flex-1 py-2 text-sm font-semibold rounded-md bg-white text-slate-900 shadow-sm transition">Live Webcam</button>
+                <button onclick="switchTab('upload')" id="tab-upload" class="flex-1 py-2 text-sm font-semibold rounded-md text-slate-600 hover:text-slate-900 transition">Upload Image</button>
+            </div>
+
+            <!-- Webcam View Container -->
+            <div id="panel-webcam" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
+                <div id="webcam-container" class="w-full aspect-video bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center relative">
+                    <p class="text-slate-400 text-sm">Initializing webcam...</p>
+                </div>
+                <button onclick="toggleWebcam()" id="webcam-toggle-btn" class="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg transition text-sm">
+                    Start Webcam
+                </button>
+            </div>
+
+            <!-- Upload View Container -->
+            <div id="panel-upload" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hidden flex flex-col items-center justify-center">
+                <div id="drop-zone" class="w-full border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-brand-500 transition cursor-pointer flex flex-col items-center justify-center">
+                    <svg class="w-10 h-10 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <p class="text-sm font-medium text-slate-700">Click to upload or drag & drop</p>
+                    <p class="text-xs text-slate-400 mt-1">PNG, JPG, WEBP up to 5MB</p>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                </div>
+                <div id="image-preview-container" class="w-full mt-4 hidden">
+                    <img id="image-preview" class="w-full max-h-64 object-contain rounded-lg border border-slate-200 bg-slate-50" alt="Uploaded preview">
+                    <button onclick="resetUpload()" class="mt-3 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-lg transition text-sm">
+                        Upload Another Image
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Real-time Predictions Panel -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Prediction Results</h2>
+                <p class="text-xs text-slate-500 mb-6">Real-time confidence metrics breakdown from the model.</p>
+                
+                <!-- Label-Probability Bars container -->
+                <div id="label-container" class="space-y-4">
+                    <p class="text-sm text-slate-400 text-center py-12">Waiting for model to load and inputs to begin...</p>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-slate-100 text-xs text-slate-400 flex justify-between items-center">
+                <span>Model URL: Custom Teachable Machine</span>
+                <span id="inference-status" class="font-medium text-slate-500">Idle</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Significance Section -->
+    <section class="max-w-5xl mx-auto px-4 py-8 w-full">
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-8 shadow-md">
+            <h3 class="text-xl font-bold mb-3">Community Significance & Impact</h3>
+            <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                Machine learning models like this one democratize artificial intelligence, making advanced computer vision tools accessible to students, educators, and community developers without requiring extensive coding backgrounds or costly infrastructure. 
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-700">
+                <div>
+                    <h4 class="font-semibold text-brand-500 text-sm mb-1">Education & Outreach</h4>
+                    <p class="text-xs text-slate-400">Lowers the barrier to entry for learning core concepts in AI, neural networks, and data bias.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-brand-500 text-sm mb-1">Rapid Prototyping</h4>
+                    <p class="text-xs text-slate-400">Enables community organizers and innovators to test accessibility aids or local solutions quickly.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-brand-500 text-sm mb-1">Inclusive Tech</h4>
+                    <p class="text-xs text-slate-400">Empowers communities to train bespoke models representing their unique local context and languages.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <p>Built with TensorFlow.js and Google Teachable Machine. Ready for GitHub Pages deployment.</p>
+    </footer>
+
+    <!-- Application Script Logic -->
+    <script>
+        const URL = "https://teachablemachine.withgoogle.com/models/myztWK3VK/";
+        let model, webcam, maxPredictions;
+        let isWebcamRunning = false;
+        let currentMode = 'webcam';
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                
+                // Update status badge
+                const statusBadge = document.getElementById('model-status');
+                statusBadge.className = "flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-200";
+                statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Model Ready`;
+
+                setupLabelContainers();
+            } catch (error) {
+                console.error("Error loading model:", error);
+                const statusBadge = document.getElementById('model-status');
+                statusBadge.className = "flex items-center gap-2 bg-rose-50 text-rose-700 px-3 py-1.5 rounded-full text-xs font-medium border border-rose-200";
+                statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span> Failed to Load Model`;
+            }
+        }
+
+        function setupLabelContainers() {
+            const container = document.getElementById('label-container');
+            container.innerHTML = '';
+            for (let i = 0; i < maxPredictions; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                    <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                        <span id="label-${i}">Class ${i}</span>
+                        <span id="prob-${i}">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div id="bar-${i}" class="bg-brand-500 h-2.5 rounded-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                `;
+                container.appendChild(wrapper);
+            }
+        }
+
+        function switchTab(mode) {
+            currentMode = mode;
+            const btnWebcam = document.getElementById('tab-webcam');
+            const btnUpload = document.getElementById('tab-upload');
+            const panelWebcam = document.getElementById('panel-webcam');
+            const panelUpload = document.getElementById('panel-upload');
+
+            if (mode === 'webcam') {
+                btnWebcam.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-white text-slate-900 shadow-sm transition";
+                btnUpload.className = "flex-1 py-2 text-sm font-semibold rounded-md text-slate-600 hover:text-slate-900 transition";
+                panelWebcam.classList.remove('hidden');
+                panelUpload.classList.add('hidden');
+                if (isWebcamRunning) {
+                    window.requestAnimationFrame(loop);
+                }
+            } else {
+                btnUpload.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-white text-slate-900 shadow-sm transition";
+                btnWebcam.className = "flex-1 py-2 text-sm font-semibold rounded-md text-slate-600 hover:text-slate-900 transition";
+                panelUpload.classList.remove('hidden');
+                panelWebcam.classList.add('hidden');
+                stopWebcam();
+            }
+        }
+
+        async function toggleWebcam() {
+            if (!model) return;
+            const btn = document.getElementById('webcam-toggle-btn');
+            
+            if (!isWebcamRunning) {
+                try {
+                    webcam = new tmImage.Webcam(320, 240, true); // width, height, flip
+                    await webcam.setup(); // request access to the webcam
+                    await webcam.play();
+                    isWebcamRunning = true;
+                    
+                    document.getElementById('webcam-container').innerHTML = '';
+                    document.getElementById('webcam-container').appendChild(webcam.canvas);
+                    btn.textContent = "Stop Webcam";
+                    btn.className = "mt-4 w-full bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 px-4 rounded-lg transition text-sm";
+                    
+                    window.requestAnimationFrame(loop);
+                } catch (e) {
+                    console.error("Webcam error:", e);
+                    alert("Could not access webcam. Please check permissions.");
+                }
+            } else {
+                stopWebcam();
+            }
+        }
+
+        function stopWebcam() {
+            if (isWebcamRunning && webcam) {
+                webcam.stop();
+                isWebcamRunning = false;
+                document.getElementById('webcam-container').innerHTML = '<p class="text-slate-400 text-sm">Webcam stopped.</p>';
+                const btn = document.getElementById('webcam-toggle-btn');
+                btn.textContent = "Start Webcam";
+                btn.className = "mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg transition text-sm";
+            }
+        }
+
+        async function loop() {
+            if (isWebcamRunning && currentMode === 'webcam') {
+                webcam.update(); // update the webcam frame
+                await predict(webcam.canvas);
+                window.requestAnimationFrame(loop);
+            }
+        }
+
+        async function predict(inputElement) {
+            if (!model) return;
+            document.getElementById('inference-status').textContent = "Running inference...";
+            const prediction = await model.predict(inputElement);
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const probability = (prediction[i].probability * 100).toFixed(1);
+                
+                const labelEl = document.getElementById(`label-${i}`);
+                const probEl = document.getElementById(`prob-${i}`);
+                const barEl = document.getElementById(`bar-${i}`);
+
+                if (labelEl && probEl && barEl) {
+                    labelEl.textContent = className;
+                    probEl.textContent = probability + '%';
+                    barEl.style.width = probability + '%';
+                }
+            }
+            document.getElementById('inference-status').textContent = "Idle";
+        }
+
+        // Upload functionality wiring
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('click', () => document.getElementById('image-upload').click());
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const preview = document.getElementById('image-preview');
+                preview.src = e.target.result;
+                
+                document.getElementById('drop-zone').classList.add('hidden');
+                document.getElementById('image-preview-container').classList.remove('hidden');
+
+                preview.onload = async function() {
+                    await predict(preview);
+                }
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function resetUpload() {
+            document.getElementById('image-upload').value = '';
+            document.getElementById('drop-zone').classList.remove('hidden');
+            document.getElementById('image-preview-container').classList.add('hidden');
+            setupLabelContainers();
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
